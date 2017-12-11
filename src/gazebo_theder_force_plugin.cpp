@@ -18,11 +18,12 @@ GZ_REGISTER_MODEL_PLUGIN(ThederForcePlugin)
 ThederForcePlugin::ThederForcePlugin()
 {
   this->i=0;
-  this->ropeLength = 100;
+  this->ropeLength = 45;
   this->forceConstantA = 6;
   this->forceConstantB = 5;
-  this->forceConstant_a = 35;
   this->dragConst = 0.002347995;
+  this->dampingConstant = 3;
+  this->eModule = 121000;
 }
 
 ThederForcePlugin::~ThederForcePlugin()
@@ -41,11 +42,8 @@ void ThederForcePlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
   if (_sdf->HasElement("link_name"))
   {
     sdf::ElementPtr elem = _sdf->GetElement("link_name");
-//    GZ_ASSERT(elem, "Element link_name doesn't exist!");
     std::string linkName = elem->Get<std::string>();
     this->link = this->model->GetLink(linkName);
-//    std::cout << linkName << "\n";
-//    GZ_ASSERT(this->link, "Link was NULL");
 
     if (!this->link)
     {
@@ -60,42 +58,60 @@ void ThederForcePlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
           boost::bind(&ThederForcePlugin::OnUpdate, this, _1));
     }
   }
-
-  // Listen to the update event. This event is broadcast every
-  // simulation iteration.
-//  this->updateConnection = event::Events::ConnectWorldUpdateBegin(
-//    boost::bind(&ModelPush::OnUpdate, this, _1));
 }
 
 // Called by the world update start event
 void ThederForcePlugin::OnUpdate(const common::UpdateInfo & /*_info*/)
 {
-  position = this->model->GetWorldPose();
-  distance = position.pos.GetLength();
-  math::Vector3 dragForce = -(this->model->GetRelativeLinearVel())*dragConst*distance;
-  thederForce = forceConstantA*exp(forceConstantB*distance/ropeLength);
-//  if(distance < ropeLength)
-//  thederForce = forceConstant_a/(-distance+ropeLength);
-//  else thederForce = 100000000;
+  math::Pose position = this->model->GetWorldPose(); // get the current position of the aircraft
+  double distance = position.pos.GetLength(); // Distance between the Plane and the Groundstation
+  math::Vector3 velocity = this->model->GetRelativeLinearVel(); // get the velocity of the aircraft
+  double speed = velocity.GetLength();
+  math::Vector3 normalizedPosition = position.pos.Normalize(); // get direction of the tether
 
-//  thederForce = 0;
+  /* calculate the drag force and damping force */
+  // variables:
+  double tetherForce = 0;
+  double damping = 0;
 
-  math::Vector3 velocity = this->model->GetRelativeLinearVel();
-  math::Vector3 normalizedPosition = position.pos.Normalize();
-// calculate the speed tangential to the distance to the groundstation:
-  double speed = velocity.x*normalizedPosition.x+velocity.y+normalizedPosition.y+velocity.z+normalizedPosition.z;
-// calculate Magnitude of drag force:
-  dragForce = (1/4)*dragConst*speed*speed*distance;
-//  dragForce = 0;
-//  add forces to the link:
-  link_->AddForce(position.pos.Normalize().operator*(-thederForce));
-  link_->AddForce(this->model->GetRelativeLinearVel().Normalize().operator*(-dragForce));
+  if(distance >= ropeLength)
+  {
+    tetherForce = eModule*3.14*4*(distance-ropeLength)/ropeLength+20;
+    damping = dampingConstant*speed;
+  }
+  else if (distance > 0.8*ropeLength)
+  {
+    tetherForce = forceConstantA*exp(forceConstantB*(distance-0.8*ropeLength)/ropeLength);
+    damping = dampingConstant*(distance-0.8*ropeLength)/(0.2*ropeLength)*speed;
+  }
 
+  /* calculate the dragforce */
+  // variables:
+  double dragForce = 0;
+
+  // calculate the speed perpendicular to the tether:
+  math::Vector3 perpendicularToTether = (normalizedPosition.Cross(velocity.Cross(normalizedPosition))).Normalize();
+  double speedPerpendicularToTether = velocity.x*perpendicularToTether.x+velocity.y*perpendicularToTether.y+velocity.z*perpendicularToTether.z;
+  // calculate Magnitude of drag force:
+  dragForce = (1/4)*dragConst*speedPerpendicularToTether*speedPerpendicularToTether*distance;
+
+  /* add forces to the link */
+  if(tetherForce > 0)
+  {
+    // add tether force:
+    link_->AddForce(normalizedPosition*(-tetherForce));
+    // add drag force
+    link_->AddForce(velocity.Normalize().operator*(-dragForce));
+    // add damping force:
+    if (damping > 50)
+      damping = 50;
+      link_->AddForce(this->model->GetWorldLinearVel().Normalize()*(-damping));
+  }
 
   // output current informations of the model
   if(i>100)
   {
-    std::cout << position.pos.Normalize().operator*(-thederForce) << "\t " << thederForce << "\t " << distance  << "\n";
+    std::cout << position.pos.Normalize().operator*(-tetherForce) << "\t " << tetherForce << "\t " << distance  << "\n";
     i=0;
   }
   i++;

@@ -20,12 +20,9 @@ namespace gazebo
   protected: double ropeLength; //Length of the rope in meters
   protected: double forceConstantA; // F = A*exp(B*distance/ropeLength)
   protected: double forceConstantB;
-  protected: double forceConstant_a;
+  protected: double dampingConstant;
   protected: double dragConst; // = 1/2*rhoLuft*diameter*cDragRope = 0.5*1.2041*0.003*1.3 = 0.002347995
-  protected: math::Pose position;
-  protected: double distance; // Distance between the Plane and the Groundstation
-  protected: double thederForce;
-  protected: double dragForce;
+  protected: double eModule;
   protected: physics::LinkPtr link_;
 
   // brief Constructor
