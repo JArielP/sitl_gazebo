@@ -18,7 +18,7 @@ GZ_REGISTER_MODEL_PLUGIN(ThederForcePlugin)
 ThederForcePlugin::ThederForcePlugin()
 {
   this->i=0;
-  this->ropeLength = 100;
+  this->ropeLength = 150;
   this->forceConstantA = 6;
   this->forceConstantB = 5;
   this->dragConst = 0.002347995;
@@ -74,11 +74,11 @@ void ThederForcePlugin::OnUpdate(const common::UpdateInfo & /*_info*/)
   double tetherForce = 0;
   double damping = 0;
 
-//  if(distance >= ropeLength)
+ /* if(distance >= ropeLength)
   {
     tetherForce = eModule*3.14*4*(distance-ropeLength)/ropeLength+20;
     damping = 0; // dampingConstant*speed;
-  }
+  }*/
 //  else if (distance > 0.8*ropeLength)
   {
     tetherForce = forceConstantA*exp(forceConstantB*(distance-0.8*ropeLength)/ropeLength);
