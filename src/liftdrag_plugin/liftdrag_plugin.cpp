@@ -165,7 +165,7 @@ void LiftDragPlugin::OnUpdate()
   math::Vector3 vel = this->link->GetWorldLinearVel(this->cp);
   // added (Jonas)
   math::Vector3 windi(0,5,0); // 10m/s wind in y-direction
-  vel+=windi;
+  // vel+=windi;
   math::Vector3 velI = vel;
   velI.Normalize();
 
