@@ -19,8 +19,8 @@ ThederForcePlugin::ThederForcePlugin()
 {
   this->i=0;
   this->ropeLength = 150;
-  this->forceConstantA = 6;
-  this->forceConstantB = 5;
+  this->forceConstantA = 20.0f*0.5f*9.81f/(expf(0.2f*this->forceConstantB));
+  this->forceConstantB = 121000.0f/(20.0f*0.5f*9.81f);
   this->dragConst = 0.002347995;
   this->dampingConstant = 3;
   this->eModule = 121000;
