@@ -1,39 +1,33 @@
 // created form Jonas
 
-#include <algorithm>
-#include <string>
 
-#include "gazebo/common/Assert.hh"
-#include "gazebo/physics/physics.hh"
-#include "gazebo/sensors/SensorManager.hh"
-#include "gazebo/transport/transport.hh"
-#include "gazebo/msgs/msgs.hh"
-#include "gazebo_theder_force_plugin.h"
+#include "gazebo_tether_force_plugin.h"
 
 using namespace gazebo;
 
-GZ_REGISTER_MODEL_PLUGIN(ThederForcePlugin)
+GZ_REGISTER_MODEL_PLUGIN(TetherForcePlugin)
 
 /////////////////////////////////////////////////
-ThederForcePlugin::ThederForcePlugin()
+TetherForcePlugin::TetherForcePlugin()
 {
   this->ropeLength = 150;
   this->dragConst = 0.002347995;
   this->eModule = 121000;
-  this->forceConstantA = 20.0f*0.5f*9.81f/(expf(0.2f*this->forceConstantB));
-  this->forceConstantB = 121000.0f/(20.0f*0.5f*9.81f*0.2f);
+  this->mass = 0.5;
+  this->forceConstantB = 38.429267934;  // this->eModule*3.141/(20.0f*this->mass*9.81f);
+  this->forceConstantA = 0.93910124;    // 20.0f*0.5f*9.81f/(expf(this->forceConstantB));
   this->i=0;
 }
 
-ThederForcePlugin::~ThederForcePlugin()
+TetherForcePlugin::~TetherForcePlugin()
 {
 }
 
-void ThederForcePlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
+void TetherForcePlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
   // Store the pointer to the model
-  GZ_ASSERT(_model, "ThederForcePlugin _model pointer is NULL");
-  GZ_ASSERT(_sdf, "ThederForcePlugin _sdf pointer is NULL");
+  GZ_ASSERT(_model, "TetherForcePlugin _model pointer is NULL");
+  GZ_ASSERT(_sdf, "TetherForcePlugin _sdf pointer is NULL");
   this->model = _model;
   this->sdf = _sdf;
 
@@ -47,20 +41,20 @@ void ThederForcePlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     if (!this->link)
     {
       gzerr << "Link with name[" << linkName << "] not found. "
-        << "The ThederForcePlugin will not generate forces\n";
+        << "The TetherForcePlugin will not generate forces\n";
 
     }
     else
     {
       link_ = this->link;
       this->updateConnection = event::Events::ConnectWorldUpdateBegin(
-          boost::bind(&ThederForcePlugin::OnUpdate, this, _1));
+          boost::bind(&TetherForcePlugin::OnUpdate, this, _1));
     }
   }
 }
 
 // Called by the world update start event
-void ThederForcePlugin::OnUpdate(const common::UpdateInfo & /*_info*/)
+void TetherForcePlugin::OnUpdate(const common::UpdateInfo & /*_info*/)
 {
   math::Pose position = this->model->GetWorldPose();             // get the current position of the aircraft
   double distance = position.pos.GetLength();                    // Distance between the Plane and the Groundstation
@@ -71,7 +65,7 @@ void ThederForcePlugin::OnUpdate(const common::UpdateInfo & /*_info*/)
   /* calculate the tether force */
   // variables:
   double tetherForce = 0;
-  tetherForce = forceConstantA*exp(forceConstantB*(distance-0.8*ropeLength)/ropeLength);
+  tetherForce = forceConstantA*exp(forceConstantB*distance/ropeLength);
 
   /* calculate the dragforce */
   // variables:
@@ -90,13 +84,13 @@ void ThederForcePlugin::OnUpdate(const common::UpdateInfo & /*_info*/)
     // add drag force
     link_->AddForce(velocity.Normalize().operator*(-dragForce));
   }
-/*
+
   // output current informations of the model, only for debugging purpose
   if(i>100)
   {
-    std::cout << position.pos.Normalize().operator*(-tetherForce) << "\t " << tetherForce << "\t " << distance  << "\n";
+    std::cout << forceConstantA << "\t "  << forceConstantB << "\t " << position.pos.Normalize().operator*(-tetherForce) << "\t " << tetherForce << "\t " << distance  << "\n";
     i=0;
   }
   i++;
-*/
+
 }
