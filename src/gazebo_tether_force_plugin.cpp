@@ -10,12 +10,12 @@ GZ_REGISTER_MODEL_PLUGIN(TetherForcePlugin)
 /////////////////////////////////////////////////
 TetherForcePlugin::TetherForcePlugin()
 {
-  this->ropeLength = 150;
+  this->ropeLength = 100;
   this->dragConst = 0.002347995;
   this->eModule = 121000;
   this->mass = 0.5;
-  this->forceConstantB = 38.429267934;  // this->eModule*3.141/(20.0f*this->mass*9.81f);
-  this->forceConstantA = 0.93910124;    // 20.0f*0.5f*9.81f/(expf(this->forceConstantB));
+  this->forceConstantB = 50;  //
+  this->forceConstantA = 0.0000000000000000000038574996959278355660346856330540251495056653024605258;    // 20*e^(-50)
   this->i=0;
 }
 
@@ -63,18 +63,14 @@ void TetherForcePlugin::OnUpdate(const common::UpdateInfo & /*_info*/)
   math::Vector3 normalizedPosition = position.pos.Normalize();   // get direction of the tether
 
   /* calculate the tether force */
-  // variables:
-  double tetherForce = 0;
-  tetherForce = forceConstantA*exp(forceConstantB*distance/ropeLength);
+  double tetherForce = forceConstantA*exp(forceConstantB*distance/ropeLength);
 
   /* calculate the dragforce */
-  // variables:
-  double dragForce = 0;
   // calculate the speed perpendicular to the tether:
   math::Vector3 perpendicularToTether = (normalizedPosition.Cross(velocity.Cross(normalizedPosition))).Normalize();
   double speedPerpendicularToTether = velocity.x*perpendicularToTether.x+velocity.y*perpendicularToTether.y+velocity.z*perpendicularToTether.z;
   // calculate Magnitude of drag force:
-  dragForce = (1/4)*dragConst*speedPerpendicularToTether*speedPerpendicularToTether*distance;
+  double dragForce = (1/4)*dragConst*speedPerpendicularToTether*speedPerpendicularToTether*distance;
 
   /* add forces to the link */
   if(tetherForce > 0)
@@ -88,7 +84,7 @@ void TetherForcePlugin::OnUpdate(const common::UpdateInfo & /*_info*/)
   // output current informations of the model, only for debugging purpose
   if(i>100)
   {
-    std::cout << forceConstantA << "\t "  << forceConstantB << "\t " << position.pos.Normalize().operator*(-tetherForce) << "\t " << tetherForce << "\t " << distance  << "\n";
+    std::cout << tetherForce << "\t " << distance  << "\n";
     i=0;
   }
   i++;
